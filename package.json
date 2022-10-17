@@ -1,0 +1,16 @@
+{
+  "name": "proyectosensor",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@azure/event-hubs": "^5.8.0",
+    "@influxdata/influxdb-client": "^1.31.0",
+    "mongodb": "^4.10.0"
+  }
+}
