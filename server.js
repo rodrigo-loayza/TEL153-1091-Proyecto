@@ -21,7 +21,7 @@ console.log('Conexión exitosa al IoT Hub');
         try {
             const payload = {
                 IotData: message,
-                MessageDate: date || Date.now().toISOString(),
+                MessageProcessDate: date || Date.now(),
                 DeviceId: deviceId,
             };
 
@@ -29,12 +29,13 @@ console.log('Conexión exitosa al IoT Hub');
             procesarData(payload);
 
             // Monitoreo de consola
-            console.log(JSON.stringify(payload));
+            console.log('Dato a cargar a base: ' + JSON.stringify(payload));
 
             // Carga de datos a la base de InfluxDB
-            saveDataInflux(date,
+            saveDataInflux(payload.IotData.timestamp,
                 payload.DeviceId,
-                payload.IotData.temperature);
+                payload.IotData.temperature,
+                payload.IotData.presence);
 
         } catch (err) {
             console.error(
@@ -46,24 +47,36 @@ console.log('Conexión exitosa al IoT Hub');
 
 
 function procesarData(payload) {
-    payload.IotData.temperature += 1;
+    let str = payload.IotData.timestamp;
+    let [dateValues, timeValues] = str.split(' ');
+    let [year, month, day] = dateValues.split('-');
+    let [hours, minutes, seconds] = timeValues.split(':');
+    let date = new Date(year, month - 1, day, hours, minutes, seconds);
+    payload.IotData.timestamp = date;
 };
 
-function saveDataInflux(date, device, temperatura) {
-    let writeApi = client.getWriteApi(org, bucket);
-    writeApi.useDefaultTags({ host: 'Node.js-server' });
+function saveDataInflux(date, device, temperatura, presencia) {
+    date.setHours(date.getHours() + 5);
 
-    let point = new Point('temperature')
+    let writeApi = client.getWriteApi(org, bucket);
+    
+    let tempPoint = new Point('temperatura')
         .tag('device', device)
         .floatField('value', temperatura)
         .timestamp(date);
-    writeApi.writePoint(point);
+    writeApi.writePoint(tempPoint);
+
+    let presencePoint = new Point('presencia')
+        .tag('device', device)
+        .booleanField('value', presencia)
+        .timestamp(date);
+    writeApi.writePoint(presencePoint);
 
     writeApi
         .close()
         .then(() => {
             console.log(
-                `Nuevos datos fueron almacenados: ${point}`
+                `Nuevos datos fueron almacenados:\n\t${tempPoint} \n\t${presencePoint}\n`
             );
         })
         .catch(err => {
